@@ -81,6 +81,36 @@
     <p class="disclaimer">
       ※ この予測は過去データに基づく統計的モデルによる参考値であり、投資判断を保証するものではありません。
     </p>
+
+    <div class="backtest-section">
+      <h3>過去日付での予測精度を検証</h3>
+      <p class="backtest-desc">
+        選択した日付の「予測日数」分前を基準に当時の予測をシミュレーションし、実際の価格とのずれを確認します。
+      </p>
+      <div class="backtest-controls">
+        <div class="form-row">
+          <label for="backtest-date">検証する日付</label>
+          <input type="date" id="backtest-date">
+        </div>
+        <button type="button" id="backtest-btn">検証する</button>
+      </div>
+      <div id="backtest-status" class="status"></div>
+      <div id="backtest-result" class="backtest-result hidden">
+        <canvas id="chart-backtest" height="120"></canvas>
+        <table id="backtest-table" class="comparison-table">
+          <thead>
+            <tr>
+              <th>アルゴリズム</th>
+              <th>予測値</th>
+              <th>実際値</th>
+              <th>誤差</th>
+              <th>誤差率</th>
+            </tr>
+          </thead>
+          <tbody id="backtest-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 

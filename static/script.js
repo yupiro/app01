@@ -7,6 +7,11 @@ const companyNameEl = document.getElementById("company-name");
 const lastPriceEl = document.getElementById("last-price");
 const comparisonBody = document.getElementById("comparison-body");
 const nextDayBadges = document.getElementById("next-day-badges");
+const backtestDateInput = document.getElementById("backtest-date");
+const backtestBtn = document.getElementById("backtest-btn");
+const backtestStatusEl = document.getElementById("backtest-status");
+const backtestResultEl = document.getElementById("backtest-result");
+const backtestBody = document.getElementById("backtest-body");
 
 const ALGO_COLORS = {
   lstm: "#f472b6",
@@ -18,6 +23,9 @@ const ZOOM_HISTORY_DAYS = 7;
 
 let chartInstance = null;
 let zoomChartInstance = null;
+let backtestChartInstance = null;
+
+backtestDateInput.max = new Date().toISOString().slice(0, 10);
 
 document.querySelectorAll(".quick-pick").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -253,5 +261,137 @@ function renderComparisonTable(data, algoKeys) {
       <td class="${changeClass}">${change >= 0 ? "+" : ""}${change.toFixed(2)}%</td>
     `;
     comparisonBody.appendChild(row);
+  });
+}
+
+backtestBtn.addEventListener("click", async () => {
+  const ticker = document.getElementById("ticker").value.trim();
+  const days = parseInt(document.getElementById("days").value, 10);
+  const targetDate = backtestDateInput.value;
+  const algorithms = Array.from(
+    document.querySelectorAll('input[name="algorithm"]:checked')
+  ).map((el) => el.value);
+
+  if (!ticker) {
+    backtestStatusEl.textContent = "銘柄コードを入力してください。";
+    backtestStatusEl.classList.add("error");
+    return;
+  }
+  if (!targetDate) {
+    backtestStatusEl.textContent = "検証する日付を選択してください。";
+    backtestStatusEl.classList.add("error");
+    return;
+  }
+  if (algorithms.length === 0) {
+    backtestStatusEl.textContent = "アルゴリズムを1つ以上選択してください。";
+    backtestStatusEl.classList.add("error");
+    return;
+  }
+
+  backtestStatusEl.textContent = "検証中です…";
+  backtestStatusEl.classList.remove("error");
+  backtestResultEl.classList.add("hidden");
+  backtestBtn.disabled = true;
+
+  try {
+    const res = await fetch("/backtest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticker, target_date: targetDate, days_ahead: days, algorithms }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "検証に失敗しました。");
+    }
+
+    backtestStatusEl.textContent = "";
+    renderBacktestResult(data);
+  } catch (err) {
+    backtestStatusEl.textContent = err.message;
+    backtestStatusEl.classList.add("error");
+  } finally {
+    backtestBtn.disabled = false;
+  }
+});
+
+function renderBacktestResult(data) {
+  backtestResultEl.classList.remove("hidden");
+  const algoKeys = Object.keys(data.predictions);
+
+  const contextLabels = data.context_dates;
+  const predictionLabels = data.prediction_dates;
+  const labels = [...contextLabels, ...predictionLabels];
+
+  const actualData = [...data.context_prices, ...data.actual_prices];
+  const actualPointRadius = [
+    ...Array(contextLabels.length).fill(0),
+    ...Array(predictionLabels.length).fill(3),
+  ];
+
+  const bridgeValue = data.context_prices[data.context_prices.length - 1];
+
+  const datasets = [
+    {
+      label: "実際の価格",
+      data: actualData,
+      borderColor: "#38bdf8",
+      backgroundColor: "#38bdf8",
+      pointRadius: actualPointRadius,
+      tension: 0.1,
+    },
+  ];
+
+  backtestBody.innerHTML = "";
+
+  algoKeys.forEach((key, index) => {
+    const pred = data.predictions[key];
+    const color = algoColor(key, index);
+    const predictedData = [
+      ...Array(contextLabels.length - 1).fill(null),
+      bridgeValue,
+      ...pred.predicted_prices,
+    ];
+
+    datasets.push({
+      label: `${pred.label}（予測）`,
+      data: predictedData,
+      borderColor: color,
+      backgroundColor: color,
+      borderDash: [6, 4],
+      pointRadius: [
+        ...Array(contextLabels.length - 1).fill(0),
+        3,
+        ...Array(pred.predicted_prices.length).fill(3),
+      ],
+      tension: 0.1,
+    });
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><span class="legend-dot" style="background:${color}"></span>${pred.label}</td>
+      <td>${pred.final_predicted.toFixed(2)}</td>
+      <td>${pred.final_actual.toFixed(2)}</td>
+      <td>${pred.deviation >= 0 ? "+" : ""}${pred.deviation.toFixed(2)}</td>
+      <td>${pred.deviation_pct >= 0 ? "+" : ""}${pred.deviation_pct.toFixed(2)}%</td>
+    `;
+    backtestBody.appendChild(row);
+  });
+
+  const ctx = document.getElementById("chart-backtest").getContext("2d");
+  if (backtestChartInstance) backtestChartInstance.destroy();
+
+  backtestChartInstance = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { ticks: { color: "#94a3b8", maxTicksLimit: 12 }, grid: { color: "#334155" } },
+        y: { ticks: { color: "#94a3b8" }, grid: { color: "#334155" } },
+      },
+      plugins: { legend: { labels: { color: "#e2e8f0" } } },
+    },
   });
 }

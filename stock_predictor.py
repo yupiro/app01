@@ -141,3 +141,68 @@ def predict_stock(ticker: str, days_ahead: int = 7, algorithms=None):
         "last_actual_price": round(float(close_prices[-1][0]), 2),
         "predictions": predictions,
     }
+
+
+def backtest_stock(ticker: str, target_date: str, days_ahead: int = 7, algorithms=None, context_days: int = 30):
+    algorithms = algorithms or list(ALGORITHMS.keys())
+    unknown = [a for a in algorithms if a not in ALGORITHMS]
+    if unknown:
+        raise ValueError(f"未対応のアルゴリズムです: {', '.join(unknown)}")
+
+    df = fetch_history(ticker, period="5y")
+    company_name = fetch_company_name(ticker)
+
+    try:
+        target_ts = pd.Timestamp(target_date)
+    except (ValueError, TypeError):
+        raise ValueError("日付の形式が正しくありません。")
+
+    normalized_index = df.index.normalize()
+    matches = np.where(normalized_index == target_ts.normalize())[0]
+    if len(matches) == 0:
+        raise ValueError("選択した日付の取引データがありません（土日・祝日・上場前の可能性があります）。別の日付を選択してください。")
+    target_idx = int(matches[0])
+
+    cutoff_idx = target_idx - days_ahead
+    min_required = max((LSTM_WINDOW_SIZE + 10) if "lstm" in algorithms else 0, 30)
+    if cutoff_idx < min_required:
+        raise ValueError("選択した日付では学習データが不足しています。もっと後の日付にするか、予測日数を減らしてください。")
+
+    close_prices = df["Close"].values.reshape(-1, 1)
+    training_prices = close_prices[: cutoff_idx + 1]
+
+    predictions = {}
+    for key in algorithms:
+        spec = ALGORITHMS[key]
+        predicted_prices = spec["func"](training_prices, days_ahead)
+        actual_prices = close_prices[cutoff_idx + 1: target_idx + 1].flatten()
+        final_predicted = float(predicted_prices[-1])
+        final_actual = float(actual_prices[-1])
+        deviation = final_predicted - final_actual
+        predictions[key] = {
+            "label": spec["label"],
+            "predicted_prices": [round(float(p), 2) for p in predicted_prices],
+            "final_predicted": round(final_predicted, 2),
+            "final_actual": round(final_actual, 2),
+            "deviation": round(deviation, 2),
+            "deviation_pct": round((deviation / final_actual) * 100, 2),
+        }
+
+    context_start = max(0, cutoff_idx - context_days + 1)
+    context_dates = df.index[context_start: cutoff_idx + 1].strftime("%Y-%m-%d").tolist()
+    context_prices = close_prices[context_start: cutoff_idx + 1].flatten().tolist()
+
+    prediction_dates = df.index[cutoff_idx + 1: target_idx + 1].strftime("%Y-%m-%d").tolist()
+    actual_prices_window = close_prices[cutoff_idx + 1: target_idx + 1].flatten().tolist()
+
+    return {
+        "ticker": ticker.upper(),
+        "company_name": company_name,
+        "cutoff_date": df.index[cutoff_idx].strftime("%Y-%m-%d"),
+        "target_date": df.index[target_idx].strftime("%Y-%m-%d"),
+        "context_dates": context_dates,
+        "context_prices": [round(float(p), 2) for p in context_prices],
+        "prediction_dates": prediction_dates,
+        "actual_prices": [round(float(p), 2) for p in actual_prices_window],
+        "predictions": predictions,
+    }

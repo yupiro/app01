@@ -247,3 +247,31 @@ button:disabled { background: #475569; cursor: not-allowed; }
   color: #94a3b8;
   margin-top: 1rem;
 }
+
+.backtest-section {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #334155;
+}
+
+.backtest-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: #e2e8f0;
+}
+
+.backtest-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0 0 1rem;
+}
+
+.backtest-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.backtest-result.hidden { display: none; }
