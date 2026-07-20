@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>株価予測アプリ</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+</head>
+<body>
+<div class="container">
+  <h1>株価予測アプリ</h1>
+  <p class="subtitle">複数のアルゴリズムで株価の将来推移を予測・比較します</p>
+
+  <div class="quick-picks">
+    <span class="quick-picks-label">GAFAM:</span>
+    <button type="button" class="quick-pick" data-ticker="GOOGL">Google</button>
+    <button type="button" class="quick-pick" data-ticker="AAPL">Apple</button>
+    <button type="button" class="quick-pick" data-ticker="META">Meta</button>
+    <button type="button" class="quick-pick" data-ticker="AMZN">Amazon</button>
+    <button type="button" class="quick-pick" data-ticker="MSFT">Microsoft</button>
+  </div>
+
+  <form id="predict-form">
+    <div class="form-row">
+      <label for="ticker">銘柄コード（例: AAPL, 7203.T）</label>
+      <input type="text" id="ticker" name="ticker" placeholder="AAPL" required>
+    </div>
+    <div class="form-row">
+      <label for="days">予測日数</label>
+      <select id="days" name="days">
+        <option value="5">5日</option>
+        <option value="7" selected>7日</option>
+        <option value="14">14日</option>
+        <option value="30">30日</option>
+      </select>
+    </div>
+    <div class="form-row algorithm-row">
+      <label>アルゴリズム</label>
+      <div class="algorithm-checks">
+        {% for key, spec in algorithms.items() %}
+        <label class="checkbox-label">
+          <input type="checkbox" name="algorithm" value="{{ key }}" checked>
+          {{ spec.label }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" id="submit-btn">予測する</button>
+  </form>
+
+  <div id="status" class="status"></div>
+
+  <div id="result" class="result hidden">
+    <div class="summary">
+      <div class="summary-titles">
+        <span id="company-name"></span>
+        <span id="ticker-label"></span>
+      </div>
+      <span id="last-price"></span>
+    </div>
+    <canvas id="chart" height="100"></canvas>
+
+    <table id="comparison-table" class="comparison-table">
+      <thead>
+        <tr>
+          <th>アルゴリズム</th>
+          <th>最終予測日の価格</th>
+          <th>騰落率</th>
+        </tr>
+      </thead>
+      <tbody id="comparison-body"></tbody>
+    </table>
+
+    <p class="disclaimer">
+      ※ この予測は過去データに基づく統計的モデルによる参考値であり、投資判断を保証するものではありません。
+    </p>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

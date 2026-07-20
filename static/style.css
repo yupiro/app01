@@ -1,0 +1,200 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin: 0;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+.subtitle {
+  color: #94a3b8;
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+.quick-picks {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.quick-picks-label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-right: 0.25rem;
+}
+
+.quick-pick {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.quick-pick:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+form {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+input, select {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+input:focus, select:focus {
+  outline: 2px solid #38bdf8;
+}
+
+button {
+  background: #38bdf8;
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+button:hover { background: #0ea5e9; }
+button:disabled { background: #475569; cursor: not-allowed; }
+
+.status {
+  min-height: 1.5rem;
+  font-size: 0.9rem;
+  color: #fbbf24;
+  margin-bottom: 1rem;
+}
+
+.status.error { color: #f87171; }
+
+.result.hidden { display: none; }
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.summary-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+#company-name {
+  font-weight: 700;
+}
+
+#ticker-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+#last-price { color: #4ade80; font-weight: 700; }
+
+.algorithm-row {
+  flex-basis: 100%;
+}
+
+.algorithm-checks {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: auto;
+  accent-color: #38bdf8;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #334155;
+}
+
+.comparison-table th {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.comparison-table .positive { color: #4ade80; }
+.comparison-table .negative { color: #f87171; }
+
+.legend-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+}
+
+.disclaimer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 1rem;
+}
