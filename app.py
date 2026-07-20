@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 
-from stock_predictor import ALGORITHMS, backtest_stock, predict_stock
+from stock_predictor import ALGORITHMS, backtest_stock, fetch_gafam_comparison, predict_stock
 
 app = Flask(__name__)
 
@@ -57,6 +57,21 @@ def backtest():
         return jsonify({"error": str(e)}), 400
     except Exception:
         return jsonify({"error": "検証処理中にエラーが発生しました。銘柄コードや日付を確認してください。"}), 500
+
+
+@app.route("/gafam-comparison")
+def gafam_comparison():
+    period = request.args.get("period", "1y")
+    if period not in ("3mo", "6mo", "1y", "2y", "5y"):
+        return jsonify({"error": "期間の指定が正しくありません。"}), 400
+
+    try:
+        result = fetch_gafam_comparison(period=period)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        return jsonify({"error": "GAFAM比較データの取得中にエラーが発生しました。"}), 500
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ const backtestBtn = document.getElementById("backtest-btn");
 const backtestStatusEl = document.getElementById("backtest-status");
 const backtestResultEl = document.getElementById("backtest-result");
 const backtestBody = document.getElementById("backtest-body");
+const gafamCompareBtn = document.getElementById("gafam-compare-btn");
+const gafamCompareSection = document.getElementById("gafam-compare-section");
+const gafamCompareStatus = document.getElementById("gafam-compare-status");
+const gafamPeriodSelect = document.getElementById("gafam-period");
 
 const ALGO_COLORS = {
   lstm: "#f472b6",
@@ -21,9 +25,18 @@ const ALGO_COLORS = {
 const FALLBACK_COLORS = ["#a78bfa", "#fb923c", "#22d3ee"];
 const ZOOM_HISTORY_DAYS = 7;
 
+const GAFAM_COLORS = {
+  GOOGL: "#4285f4",
+  AAPL: "#a1a1aa",
+  META: "#0866ff",
+  AMZN: "#ff9900",
+  MSFT: "#7fba00",
+};
+
 let chartInstance = null;
 let zoomChartInstance = null;
 let backtestChartInstance = null;
+let gafamChartInstance = null;
 
 backtestDateInput.max = new Date().toISOString().slice(0, 10);
 
@@ -390,6 +403,79 @@ function renderBacktestResult(data) {
       scales: {
         x: { ticks: { color: "#94a3b8", maxTicksLimit: 12 }, grid: { color: "#334155" } },
         y: { ticks: { color: "#94a3b8" }, grid: { color: "#334155" } },
+      },
+      plugins: { legend: { labels: { color: "#e2e8f0" } } },
+    },
+  });
+}
+
+gafamCompareBtn.addEventListener("click", () => {
+  const isHidden = gafamCompareSection.classList.contains("hidden");
+  if (isHidden) {
+    gafamCompareSection.classList.remove("hidden");
+    loadGafamComparison();
+  } else {
+    gafamCompareSection.classList.add("hidden");
+  }
+});
+
+gafamPeriodSelect.addEventListener("change", () => {
+  if (!gafamCompareSection.classList.contains("hidden")) {
+    loadGafamComparison();
+  }
+});
+
+async function loadGafamComparison() {
+  gafamCompareStatus.textContent = "GAFAMのデータを取得中です…";
+  gafamCompareStatus.classList.remove("error");
+
+  try {
+    const period = gafamPeriodSelect.value;
+    const res = await fetch(`/gafam-comparison?period=${encodeURIComponent(period)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "GAFAM比較データの取得に失敗しました。");
+    }
+
+    gafamCompareStatus.textContent = "";
+    renderGafamChart(data);
+  } catch (err) {
+    gafamCompareStatus.textContent = err.message;
+    gafamCompareStatus.classList.add("error");
+  }
+}
+
+function renderGafamChart(data) {
+  const tickers = Object.keys(data.series);
+  const datasets = tickers.map((ticker) => {
+    const s = data.series[ticker];
+    return {
+      label: `${s.label} (${ticker})`,
+      data: s.normalized_prices,
+      borderColor: GAFAM_COLORS[ticker] || "#e2e8f0",
+      backgroundColor: "transparent",
+      pointRadius: 0,
+      tension: 0.1,
+    };
+  });
+
+  const ctx = document.getElementById("chart-gafam").getContext("2d");
+  if (gafamChartInstance) gafamChartInstance.destroy();
+
+  gafamChartInstance = new Chart(ctx, {
+    type: "line",
+    data: { labels: data.dates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { ticks: { color: "#94a3b8", maxTicksLimit: 12 }, grid: { color: "#334155" } },
+        y: {
+          ticks: { color: "#94a3b8", callback: (v) => v.toFixed(0) },
+          grid: { color: "#334155" },
+          title: { display: true, text: "起点=100として指数化", color: "#94a3b8" },
+        },
       },
       plugins: { legend: { labels: { color: "#e2e8f0" } } },
     },

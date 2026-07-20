@@ -33,6 +33,41 @@ def fetch_company_name(ticker: str) -> str:
         return ticker.upper()
 
 
+GAFAM_TICKERS = {
+    "GOOGL": "Google",
+    "AAPL": "Apple",
+    "META": "Meta",
+    "AMZN": "Amazon",
+    "MSFT": "Microsoft",
+}
+
+
+def fetch_gafam_comparison(period: str = "1y"):
+    tickers = list(GAFAM_TICKERS.keys())
+    df = yf.download(tickers, period=period, auto_adjust=True, progress=False)
+    if df.empty:
+        raise ValueError("GAFAMのデータが取得できませんでした。")
+
+    close = df["Close"][tickers].dropna()
+    if close.empty:
+        raise ValueError("GAFAMの共通取引データが取得できませんでした。")
+
+    normalized = close.div(close.iloc[0]).mul(100)
+
+    series = {}
+    for ticker in tickers:
+        series[ticker] = {
+            "label": GAFAM_TICKERS[ticker],
+            "normalized_prices": [round(float(v), 2) for v in normalized[ticker].tolist()],
+            "raw_prices": [round(float(v), 2) for v in close[ticker].tolist()],
+        }
+
+    return {
+        "dates": close.index.strftime("%Y-%m-%d").tolist(),
+        "series": series,
+    }
+
+
 def predict_moving_average(close_prices: np.ndarray, days_ahead: int, window: int = MOVING_AVERAGE_WINDOW) -> np.ndarray:
     prices = close_prices.flatten()
     recent = prices[-window:] if len(prices) >= window else prices
