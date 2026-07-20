@@ -16,13 +16,24 @@ LINEAR_WINDOW = 120
 MOVING_AVERAGE_WINDOW = 20
 
 
-def fetch_history(ticker: str, period: str = "2y") -> pd.DataFrame:
-    df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+def fetch_history(ticker: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame:
+    df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
     if df.empty:
-        raise ValueError(f"銘柄コード '{ticker}' のデータが取得できませんでした。")
+        raise ValueError(f"銘柄コード '{ticker}' のデータが取得できませんでした（この時間軸では取得できない可能性があります）。")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     return df
+
+
+INTERVALS = {
+    "1d": {"label": "日足（長期）", "unit_label": "日", "period": "2y", "intraday": False},
+    "60m": {"label": "1時間足（超短期）", "unit_label": "本(1時間)", "period": "3mo", "intraday": True},
+    "30m": {"label": "30分足（超短期）", "unit_label": "本(30分)", "period": "1mo", "intraday": True},
+    "15m": {"label": "15分足（超短期）", "unit_label": "本(15分)", "period": "1mo", "intraday": True},
+    "5m": {"label": "5分足（超短期）", "unit_label": "本(5分)", "period": "1mo", "intraday": True},
+    "1m": {"label": "1分足（超短期）", "unit_label": "本(1分)", "period": "5d", "intraday": True},
+}
+INTERVAL_MINUTES = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "60m": 60}
 
 
 def fetch_company_name(ticker: str) -> str:
@@ -137,18 +148,21 @@ ALGORITHMS = {
 }
 
 
-def predict_stock(ticker: str, days_ahead: int = 7, algorithms=None):
+def predict_stock(ticker: str, days_ahead: int = 7, algorithms=None, interval: str = "1d"):
     algorithms = algorithms or list(ALGORITHMS.keys())
     unknown = [a for a in algorithms if a not in ALGORITHMS]
     if unknown:
         raise ValueError(f"未対応のアルゴリズムです: {', '.join(unknown)}")
+    if interval not in INTERVALS:
+        raise ValueError(f"未対応の時間軸です: {interval}")
 
-    df = fetch_history(ticker)
+    interval_spec = INTERVALS[interval]
+    df = fetch_history(ticker, period=interval_spec["period"], interval=interval)
     company_name = fetch_company_name(ticker)
     close_prices = df["Close"].values.reshape(-1, 1)
 
     if len(close_prices) < 30:
-        raise ValueError("予測に十分な履歴データがありません（データ量不足）。")
+        raise ValueError("予測に十分な履歴データがありません（この時間軸ではデータ量が不足しています）。")
 
     predictions = {}
     for key in algorithms:
@@ -159,17 +173,28 @@ def predict_stock(ticker: str, days_ahead: int = 7, algorithms=None):
             "future_prices": [round(float(p), 2) for p in predicted_prices],
         }
 
-    history_dates = df.index[-120:].strftime("%Y-%m-%d").tolist()
+    date_format = "%Y-%m-%d %H:%M" if interval_spec["intraday"] else "%Y-%m-%d"
+    history_dates = df.index[-120:].strftime(date_format).tolist()
     history_prices = close_prices[-120:].flatten().tolist()
 
     last_date = df.index[-1]
-    future_dates = pd.bdate_range(
-        start=last_date + pd.Timedelta(days=1), periods=days_ahead
-    ).strftime("%Y-%m-%d").tolist()
+    if interval_spec["intraday"]:
+        minutes = INTERVAL_MINUTES[interval]
+        future_dates = [
+            (last_date + pd.Timedelta(minutes=minutes * (i + 1))).strftime(date_format)
+            for i in range(days_ahead)
+        ]
+    else:
+        future_dates = pd.bdate_range(
+            start=last_date + pd.Timedelta(days=1), periods=days_ahead
+        ).strftime(date_format).tolist()
 
     return {
         "ticker": ticker.upper(),
         "company_name": company_name,
+        "interval": interval,
+        "interval_label": interval_spec["label"],
+        "is_intraday": interval_spec["intraday"],
         "history_dates": history_dates,
         "history_prices": [round(float(p), 2) for p in history_prices],
         "future_dates": future_dates,

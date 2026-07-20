@@ -16,6 +16,13 @@ const gafamCompareBtn = document.getElementById("gafam-compare-btn");
 const gafamCompareSection = document.getElementById("gafam-compare-section");
 const gafamCompareStatus = document.getElementById("gafam-compare-status");
 const gafamPeriodSelect = document.getElementById("gafam-period");
+const intervalSelect = document.getElementById("interval");
+const daysSelect = document.getElementById("days");
+const daysLabel = document.getElementById("days-label");
+const zoomHeading = document.getElementById("zoom-heading");
+
+const DAILY_DAY_OPTIONS = [5, 7, 14, 30];
+const INTRADAY_DAY_OPTIONS = [5, 10, 15, 30];
 
 const ALGO_COLORS = {
   lstm: "#f472b6",
@@ -40,6 +47,28 @@ let gafamChartInstance = null;
 
 backtestDateInput.max = new Date().toISOString().slice(0, 10);
 
+function updateDaysOptions() {
+  const selectedOption = intervalSelect.options[intervalSelect.selectedIndex];
+  const isIntraday = selectedOption.dataset.intraday === "true";
+  const unitLabel = selectedOption.dataset.unitLabel;
+  const previousValue = daysSelect.value;
+  const options = isIntraday ? INTRADAY_DAY_OPTIONS : DAILY_DAY_OPTIONS;
+
+  daysLabel.textContent = isIntraday ? "予測本数" : "予測日数";
+  daysSelect.innerHTML = options
+    .map((n) => `<option value="${n}">${n}${isIntraday ? unitLabel : "日"}</option>`)
+    .join("");
+
+  if (options.includes(Number(previousValue))) {
+    daysSelect.value = previousValue;
+  } else {
+    daysSelect.value = String(options[1]);
+  }
+}
+
+intervalSelect.addEventListener("change", updateDaysOptions);
+updateDaysOptions();
+
 document.querySelectorAll(".quick-pick").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.getElementById("ticker").value = btn.dataset.ticker;
@@ -52,6 +81,7 @@ form.addEventListener("submit", async (e) => {
 
   const ticker = document.getElementById("ticker").value.trim();
   const days = parseInt(document.getElementById("days").value, 10);
+  const interval = intervalSelect.value;
   const algorithms = Array.from(
     document.querySelectorAll('input[name="algorithm"]:checked')
   ).map((el) => el.value);
@@ -71,7 +101,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch("/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker, days_ahead: days, algorithms }),
+      body: JSON.stringify({ ticker, days_ahead: days, algorithms, interval }),
     });
     const data = await res.json();
 
@@ -95,9 +125,13 @@ function algoColor(key, index) {
 
 function renderResult(data) {
   companyNameEl.textContent = data.company_name;
-  tickerLabel.textContent = data.ticker;
-  lastPriceEl.textContent = `最新終値: ${data.last_actual_price}`;
+  tickerLabel.textContent = `${data.ticker}（${data.interval_label}）`;
+  lastPriceEl.textContent = `最新値: ${data.last_actual_price}`;
   resultEl.classList.remove("hidden");
+
+  zoomHeading.textContent = data.is_intraday
+    ? "直近の実績 + 予測（拡大表示）"
+    : "直近1週間 + 予測（拡大表示）";
 
   const algoKeys = Object.keys(data.predictions);
 

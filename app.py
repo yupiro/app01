@@ -1,13 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 
-from stock_predictor import ALGORITHMS, backtest_stock, fetch_gafam_comparison, predict_stock
+from stock_predictor import ALGORITHMS, INTERVALS, backtest_stock, fetch_gafam_comparison, predict_stock
 
 app = Flask(__name__)
 
 
 @app.route("/")
 def index():
-    return render_template("index.html", algorithms=ALGORITHMS)
+    return render_template("index.html", algorithms=ALGORITHMS, intervals=INTERVALS)
 
 
 @app.route("/predict", methods=["POST"])
@@ -16,16 +16,19 @@ def predict():
     ticker = (data.get("ticker") or "").strip()
     days_ahead = int(data.get("days_ahead", 7))
     algorithms = data.get("algorithms") or list(ALGORITHMS.keys())
+    interval = data.get("interval") or "1d"
 
     if not ticker:
         return jsonify({"error": "銘柄コードを入力してください。"}), 400
     if not (1 <= days_ahead <= 30):
-        return jsonify({"error": "予測日数は1〜30の範囲で指定してください。"}), 400
+        return jsonify({"error": "予測本数/日数は1〜30の範囲で指定してください。"}), 400
     if not algorithms:
         return jsonify({"error": "アルゴリズムを1つ以上選択してください。"}), 400
+    if interval not in INTERVALS:
+        return jsonify({"error": "時間軸の指定が正しくありません。"}), 400
 
     try:
-        result = predict_stock(ticker, days_ahead=days_ahead, algorithms=algorithms)
+        result = predict_stock(ticker, days_ahead=days_ahead, algorithms=algorithms, interval=interval)
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
